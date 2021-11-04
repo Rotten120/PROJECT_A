@@ -70,6 +70,7 @@ Texture2D *texture_ptr[4];
 void Initialize();
 
 void PlayerControls();
+void PlayerAnimation();
 bool PlayerAttack();
 bool PlayerMovement();
 
@@ -216,23 +217,7 @@ void PlayerControls()
     {
         framesCounter_player = 0;
         player.animation.currentFrame++;
-
-        switch (player.animation.currentAction)
-        {
-            case WALKING:
-                if(player.animation.currentFrame >= 4)
-                    player.animation.currentFrame = 0;
-                player.animation.sourceTexture.x = player.coords.width * player.animation.currentFrame;
-            break;
-
-            case ATTACKING:
-            break;
-
-            case NONE:
-                player.animation.sourceTexture.x = 0;
-            break;
-            default: break;
-        }
+        PlayerAnimation();
     }
 
     if(next_response_player >= player.animation.nextPlayerInput)
@@ -257,7 +242,7 @@ void PlayerControls()
         else
         {
             next_response_player = 0;
-            framesCounter_player = 0;
+            framesCounter_player++;
             player.animation = (struct Animation){
                 NONE,
                 texture_ptr[2],
@@ -272,6 +257,26 @@ void PlayerControls()
     {   
         framesCounter_player++;
         next_response_player++;
+    }
+}
+
+void PlayerAnimation()
+{
+    switch (player.animation.currentAction)
+    {
+        case WALKING:
+            if(player.animation.currentFrame >= 4)
+                player.animation.currentFrame = 0;
+            player.animation.sourceTexture.x = player.coords.width * player.animation.currentFrame;
+        break;
+
+        case ATTACKING:
+        break;
+
+        case NONE:
+            player.animation.sourceTexture.x = 0;
+        break;
+        default: break;
     }
 }
 
