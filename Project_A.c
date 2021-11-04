@@ -1,4 +1,5 @@
 #include "raylib.h"
+#include "GameStructures.h"
 
 #define SETFPS 60
 #define MAX 8
@@ -6,50 +7,14 @@
 const int screenWidth = 1200;
 const int screenHeight = 800;
 
+int maxEntities = 0;
+
 int framesCounter_player;
 int next_response_player;
 int framesCounter_global;
 
-enum BlockType {CRATE, STONE, HAY, POND, BORDER};
-enum Action {NONE, WALKING, ATTACKING};
-
-struct Bars
-{
-    int current;
-    int max;
-};
-
-struct Stats
-{
-    int speed;
-    int damage;
-    struct Bars health;
-    struct Bars stamina;
-};
-
-struct Animation
-{
-    enum Action currentAction;      //defines the current action of the player
-    Texture2D* texture;             //defines the texture use for the action
-    Rectangle sourceTexture;        //defines where in the texture is use
-    int currentFrame;               //defines which frame of the texture is use
-    int nextFrame;                  //defines how long for the next animation to update
-    int nextPlayerInput;            //defines how long for the next player control input
-};
-
-struct PlayerData
-{
-    Rectangle coords;
-    Rectangle movement_hitbox[4];
-    struct Animation animation;
-    struct Stats stats;
-};
-
-struct Obstacles
-{
-    enum BlockType block_type;
-    Rectangle coords;
-};
+struct PlayerData player;
+Texture2D *texture_ptr[4];
 
 struct Obstacles obstacles[] = {
     //TYPE OF BLOCK, {x position, y position, width, height}
@@ -63,9 +28,6 @@ struct Obstacles obstacles[] = {
     {STONE, {500, 500, 120, 120}},
     {HAY, {800, 400, 120, 120}},
     {POND, {-400, 300, 120, 120}}};
-
-struct PlayerData player;
-Texture2D *texture_ptr[4];
 
 void Initialize();
 
@@ -88,10 +50,10 @@ int main()
     Texture2D Player_Walking = LoadTexture("assets/PLAYER_WALKING.png");
     Texture2D Blocks = LoadTexture("assets/OBSTACLES_TRUE.png");
 
-    texture_ptr[0] = &Area;
-    texture_ptr[1] = &Blocks;
-    texture_ptr[2] = &Player_Standing;
-    texture_ptr[3] = &Player_Walking;
+    texture_ptr[STANDING] = &Player_Standing;
+    texture_ptr[WALKING] = &Player_Walking;
+    texture_ptr[OBSTACLES] = &Blocks;
+    texture_ptr[MAP] = &Area;
     /* TEXTURE AND SOUND LOAD SECTION OF THE CODE */
 
     player.coords.width = Player_Standing.width;
@@ -130,14 +92,6 @@ int main()
                     DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
     
                 EndMode2D();
-                DrawText(TextFormat("%d", player.coords.height), 50, 50, 45, BLUE);
-                DrawText(TextFormat("%d", player.animation.currentAction), 50, 100, 45, BLUE);
-                DrawText(TextFormat("%d", player.animation.nextPlayerInput), 50, 150, 45, BLUE);
-                DrawText(TextFormat("%d", player.animation.currentFrame), 50, 200, 45, BLUE);
-                DrawText(TextFormat("%d", player.animation.nextFrame), 50, 250, 45, BLUE);
-                DrawText(TextFormat("%d", next_response_player), 50, 300, 45, BLUE);
-                DrawText(TextFormat("%d", framesCounter_player), 50, 350, 45, BLUE);
-                DrawText(TextFormat("%d", player.animation.sourceTexture.y), 50, 400, 45, BLUE);
             EndDrawing();
     }
 
@@ -158,10 +112,11 @@ void Initialize()
     double BaseHitBox_Height = player.coords.height / 3;
     double BaseHitbox_Ypos = BaseHitBox_Height * 2;
 
+    player.nextPlayerInput = 8;
+    player.action = NONE;
+
     player.animation.sourceTexture = (Rectangle){0, 120, player.coords.width, player.coords.height};
-    player.animation.texture = texture_ptr[2];
-    player.animation.currentAction = NONE;
-    player.animation.nextPlayerInput = 8;
+    player.animation.texture = texture_ptr[STANDING];
     player.animation.currentFrame = 0;
     player.animation.nextFrame = 8;
 
@@ -174,10 +129,10 @@ void Initialize()
     player.stats.health.current = player.stats.health.max;
     player.stats.stamina.current = player.stats.stamina.max;
 
-    player.movement_hitbox[0] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-    player.movement_hitbox[1] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-    player.movement_hitbox[2] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-    player.movement_hitbox[3] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[UP] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[DOWN] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[LEFT] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[RIGHT] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
 }
 
 void DrawObstacles(Texture2D *Blocks)
@@ -186,7 +141,7 @@ void DrawObstacles(Texture2D *Blocks)
 
     for (int i = 0; i < MAX; i++)
     {
-        switch (obstacles[i].block_type)
+        switch (obstacles[i].type)
         {
         case CRATE:
             SourceVec = (Vector2){0, 0};
@@ -205,7 +160,7 @@ void DrawObstacles(Texture2D *Blocks)
         default:
             break;
         }
-        if (obstacles[i].block_type != BORDER)
+        if (obstacles[i].type != BORDER)
             DrawTextureRec(*Blocks, (Rectangle){SourceVec.x, SourceVec.y, obstacles[i].coords.width, obstacles[i].coords.height},
                            (Vector2){obstacles[i].coords.x, obstacles[i].coords.y}, WHITE);
     }
@@ -220,7 +175,7 @@ void PlayerControls()
         PlayerAnimation();
     }
 
-    if(next_response_player >= player.animation.nextPlayerInput)
+    if(next_response_player >= player.nextPlayerInput)
     {
         if(PlayerAttack())
         {
@@ -230,26 +185,26 @@ void PlayerControls()
         {
             next_response_player = 0;
             framesCounter_player++;
+                player.nextPlayerInput = 0;
+                player.action = WALKING;
             player.animation = (struct Animation){
-                WALKING,
-                texture_ptr[3],
+                texture_ptr[WALKING],
                 player.animation.sourceTexture,
                 player.animation.currentFrame,
-                8,
-                0
+                8
             };
         }
         else
         {
             next_response_player = 0;
             framesCounter_player++;
+                player.nextPlayerInput = 0;
+                player.action = NONE;
             player.animation = (struct Animation){
-                NONE,
-                texture_ptr[2],
+                texture_ptr[STANDING],
                 player.animation.sourceTexture,
                 0,
-                0,
-                0
+                8
             };
         }
     }
@@ -262,7 +217,7 @@ void PlayerControls()
 
 void PlayerAnimation()
 {
-    switch (player.animation.currentAction)
+    switch (player.action)
     {
         case WALKING:
             if(player.animation.currentFrame >= 4)
@@ -282,30 +237,52 @@ void PlayerAnimation()
 
 bool PlayerAttack()
 {
+    if(IsKeyPressed(KEY_J))
+    {
+        enum Direction dir = player.animation.sourceTexture.y / player.animation.sourceTexture.height;
+
+        switch(dir)
+        {
+            case UP:
+                
+            break;
+
+            case DOWN:
+            break;
+
+            case LEFT:
+            break;
+
+            case RIGHT:
+            break;
+
+            default: break;
+        }
+    }
     return false;
 }
 
 bool PlayerMovement()
 {
-    if(IsKeyDown(KEY_W) && !IsCollideEntityRecs(&player.movement_hitbox[0], obstacles))
+    if(IsKeyDown(KEY_W) && !IsCollideEntityRecs(&player.movement_hitbox[UP], obstacles))
     {
-        player.animation.sourceTexture.y = 0;
+        player.animation.sourceTexture.y = player.coords.height * UP;
         player.coords.y -= player.stats.speed;
     }
-    else if(IsKeyDown(KEY_S) && !IsCollideEntityRecs(&player.movement_hitbox[1], obstacles))
+    else if(IsKeyDown(KEY_S) && !IsCollideEntityRecs(&player.movement_hitbox[DOWN], obstacles))
     {
-        player.animation.sourceTexture.y = player.coords.height;
+        player.animation.sourceTexture.y = player.coords.height * DOWN;
         player.coords.y += player.stats.speed;
     }
 
-    if(IsKeyDown(KEY_A) && !IsCollideEntityRecs(&player.movement_hitbox[2], obstacles))
+    if(IsKeyDown(KEY_A) && !IsCollideEntityRecs(&player.movement_hitbox[LEFT], obstacles))
     {
-        player.animation.sourceTexture.y = player.coords.height * 2;
+        player.animation.sourceTexture.y = player.coords.height * LEFT;
         player.coords.x -= player.stats.speed;
     }
-    else if(IsKeyDown(KEY_D) && !IsCollideEntityRecs(&player.movement_hitbox[3], obstacles))
+    else if(IsKeyDown(KEY_D) && !IsCollideEntityRecs(&player.movement_hitbox[RIGHT], obstacles))
     {
-        player.animation.sourceTexture.y = player.coords.height * 3;
+        player.animation.sourceTexture.y = player.coords.height * RIGHT;
         player.coords.x += player.stats.speed;
     }
 
@@ -322,3 +299,4 @@ bool IsCollideEntityRecs(Rectangle *Target_Entity, struct Obstacles Target_Hitbo
             return true;
     return false;
 }
+

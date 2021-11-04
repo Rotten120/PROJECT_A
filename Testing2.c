@@ -8,13 +8,13 @@ int main()
 {
     InitWindow(screenWidth, screenHeight, "TESTING 2 PROGRAMS");
     SetTargetFPS(SETFPS);
-    Texture2D texture = LoadTexture("assets/PLAYER_ANIMATION.png");
+    Texture2D texture = LoadTexture("assets/SLASH.png");
     int framesCounter = 0;
     int frame = 0;
 
     while(!WindowShouldClose())
     {
-        if(framesCounter == 10)
+        if(framesCounter == 5)
         {
             framesCounter = 0;
             frame++;
@@ -23,11 +23,8 @@ int main()
 
         framesCounter++;
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(BLACK);
         DrawTextureRec(texture, (Rectangle){frame * 96, 0, 96, 120}, (Vector2){screenWidth / 2, screenHeight / 2}, WHITE);
-        DrawTextureRec(texture, (Rectangle){frame * 96, 120, 96, 120}, (Vector2){50, 50}, WHITE);
-        DrawTextureRec(texture, (Rectangle){frame * 96, 240, 96, 120}, (Vector2){screenWidth - 200, screenHeight - 200}, WHITE);
-        DrawTextureRec(texture, (Rectangle){frame * 96, 360, 96, 120}, (Vector2){100, screenHeight - 200}, WHITE);
         EndDrawing();
     }
 
