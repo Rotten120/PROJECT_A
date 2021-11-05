@@ -7,8 +7,6 @@
 const int screenWidth = 1200;
 const int screenHeight = 800;
 
-int maxEntities = 0;
-
 int framesCounter_player;
 int next_response_player;
 int framesCounter_global;
@@ -60,9 +58,6 @@ int main()
     texture_ptr[MAP] = &Area;
     /* TEXTURE AND SOUND LOAD SECTION OF THE CODE */
 
-    player.coords.width = Player_Standing.width;
-    player.coords.height = Player_Standing.height / 4;
-
     Initialize();
 
     Camera2D camera;
@@ -98,7 +93,20 @@ int main()
                     DrawTexture(Area, -1600, -1600, WHITE);
                     DrawObstacles(&Blocks);
                     DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
-    
+                    DrawRectangleLinesEx(player.movement_hitbox[0], 6, RED);
+                    DrawRectangleLinesEx(player.movement_hitbox[1], 6, BLUE);
+                    DrawRectangleLinesEx(player.movement_hitbox[2], 6, YELLOW);
+                    DrawRectangleLinesEx(player.movement_hitbox[3], 6, BLACK);
+
+                    DrawText(TextFormat("%d", player.coords.height), 50, 50, 45, BLUE);
+                    DrawText(TextFormat("%d", player.action), 50, 100, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.sizeFrame), 50, 150, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.currentFrame), 50, 200, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.nextFrame), 50, 250, 45, BLUE);
+                    DrawText(TextFormat("%d", next_response_player), 50, 300, 45, BLUE);
+                    DrawText(TextFormat("%d", framesCounter_player), 50, 350, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.sourceTexture.y), 50, 400, 45, BLUE);
+
                 EndMode2D();
             EndDrawing();
         framesCounter_global++;
@@ -116,28 +124,28 @@ int main()
 
 void Initialize()
 {
-    player.coords.x = (screenWidth / 2) - (player.coords.width / 2);
-    player.coords.y = (screenHeight / 2) - (player.coords.height / 2);
+    int textureWidth = texture_ptr[STAND]->width;
+    int textureHeight = texture_ptr[STAND]->height / 4;
+
+    player.action = NONE;
+
+    player.animation = (struct Animation){
+        texture_ptr[STAND],
+        {0, 120, textureWidth, textureHeight},
+        0, 8, 8
+    };
+
+    player.coords = (Rectangle){
+        (screenWidth / 2) - (player.coords.width / 2),
+        (screenHeight / 2) - (player.coords.height / 2),
+        textureWidth,
+        textureHeight
+    };
+
+    player.stats = (struct Stats){10, 15, {100, 100}, {100, 100}};
 
     double BaseHitBox_Height = player.coords.height / 3;
     double BaseHitbox_Ypos = BaseHitBox_Height * 2;
-    
-    player.action = NONE;
-
-    player.animation.sourceTexture = (Rectangle){0, 120, player.coords.width, player.coords.height};
-    player.animation.texture = texture_ptr[STAND];
-    player.animation.currentFrame = 0;
-    player.animation.sizeFrame = 8;
-    player.animation.nextFrame = 8;
-
-    player.stats.damage = 15;
-    player.stats.speed = 10;
-
-    player.stats.health.max = 100;
-    player.stats.stamina.max = 100;
-
-    player.stats.health.current = player.stats.health.max;
-    player.stats.stamina.current = player.stats.stamina.max;
 
     player.movement_hitbox[UP] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
     player.movement_hitbox[DOWN] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
@@ -189,32 +197,41 @@ void PlayerControls()
     {
         if(PlayerAttack())
         {
-
+            next_response_player = 0;
+            framesCounter_player = 0;
+                player.action = ATTACKING;
+            player.animation = (struct Animation){
+                texture_ptr[STAND],
+                player.animation.sourceTexture,
+                0,
+                10,
+                50
+            };
         }
         else if(PlayerMovement())
         {
             next_response_player = 0;
             framesCounter_player++;
-                player.animation.sizeFrame = 0;
                 player.action = WALKING;
             player.animation = (struct Animation){
                 texture_ptr[WALK],
                 player.animation.sourceTexture,
                 player.animation.currentFrame,
-                8
+                8,
+                0
             };
         }
         else
         {
             next_response_player = 0;
-            framesCounter_player++;
-                player.animation.sizeFrame = 0;
+            framesCounter_player = 0;
                 player.action = NONE;
             player.animation = (struct Animation){
                 texture_ptr[STAND],
                 player.animation.sourceTexture,
                 0,
-                8
+                8,
+                0
             };
         }
     }
@@ -259,7 +276,7 @@ bool PlayerAttack()
             {
                 texture_ptr[TEMP],
                 {0, 0, textureWidth, textureHeight},
-                0, 10, 40
+                0, 10, 50
             }
         };
 
@@ -267,27 +284,27 @@ bool PlayerAttack()
         {
             case UP:
                 sword.animation.sourceTexture.y = sword.coords.height * UP;
-                sword.coords.y -= textureHeight;
+                sword.coords.y -= sword.animation.sourceTexture.height;
             break;
 
             case DOWN:
                 sword.animation.sourceTexture.y = sword.coords.height * DOWN;
-                sword.coords.y += textureHeight;
+                sword.coords.y += sword.animation.sourceTexture.height;
             break;
 
             case LEFT:
                 sword.animation.sourceTexture.y = sword.coords.height * LEFT;
-                sword.coords.x -= textureWidth;
+                sword.coords.x -= sword.animation.sourceTexture.height;
             break;
 
             case RIGHT:
                 sword.animation.sourceTexture.y = sword.coords.height * RIGHT;
-                sword.coords.x += textureWidth;
+                sword.coords.x += sword.animation.sourceTexture.height;
             break;
 
             default: break;
         }
-
+            //add that something that deals damage
         return true;
     }
     return false;
@@ -319,14 +336,14 @@ bool PlayerMovement()
 
     if(IsKeyDown(KEY_A) || IsKeyDown(KEY_S) || IsKeyDown(KEY_W) || IsKeyDown(KEY_D))
         return true;
-    else
-        return false;
+    
+    return false;
 }
 
 bool IsCollideEntityRecs(Rectangle *Target_Entity, struct Obstacles Target_Hitbox[])
 {
     for (int i = 0; i < MAX; i++)
-        if (CheckCollisionRecs(*Target_Entity, Target_Hitbox[i].coords))
+        if(CheckCollisionRecs(*Target_Entity, Target_Hitbox[i].coords))
             return true;
     return false;
 }
