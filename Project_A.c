@@ -15,6 +15,8 @@ struct PlayerData player;
 struct SpecialEffectsData effects[] = { 0 };
 Texture2D *texture_ptr[5];
 
+bool ShowHitbox = false;
+
 struct Obstacles obstacles[] = {
     //TYPE OF BLOCK, {x position, y position, width, height}
 
@@ -24,9 +26,10 @@ struct Obstacles obstacles[] = {
     {BORDER, {1600, -800, 800, 2400}},
 
     {CRATE, {100, 100, 120, 120}},
-    {STONE, {500, 500, 120, 120}},
+    {STONE, {480, 500, 120, 120}},
     {HAY, {800, 400, 120, 120}},
-    {POND, {-400, 300, 120, 120}}};
+    {POND, {-400, 300, 120, 120}}
+};
 
 void Initialize();
 
@@ -72,6 +75,9 @@ int main()
     {
         PlayerControls();
 
+        if(IsKeyPressed(KEY_F3))
+            ShowHitbox = !ShowHitbox;
+
         camera.target = (Vector2){player.coords.x + (player.coords.width / 2), player.coords.y + (player.coords.height / 2)};
 
         BaseHitBox_Height = player.coords.height / 3;
@@ -93,19 +99,15 @@ int main()
                     DrawTexture(Area, -1600, -1600, WHITE);
                     DrawObstacles(&Blocks);
                     DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
-                    DrawRectangleLinesEx(player.movement_hitbox[0], 6, RED);
-                    DrawRectangleLinesEx(player.movement_hitbox[1], 6, BLUE);
-                    DrawRectangleLinesEx(player.movement_hitbox[2], 6, YELLOW);
-                    DrawRectangleLinesEx(player.movement_hitbox[3], 6, BLACK);
-
-                    DrawText(TextFormat("%d", player.coords.height), 50, 50, 45, BLUE);
-                    DrawText(TextFormat("%d", player.action), 50, 100, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.sizeFrame), 50, 150, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.currentFrame), 50, 200, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.nextFrame), 50, 250, 45, BLUE);
-                    DrawText(TextFormat("%d", next_response_player), 50, 300, 45, BLUE);
-                    DrawText(TextFormat("%d", framesCounter_player), 50, 350, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.sourceTexture.y), 50, 400, 45, BLUE);
+                    
+                    if(ShowHitbox)
+                    {
+                        DrawRectangleLinesEx(player.coords, 6, WHITE);
+                        DrawRectangleLinesEx(player.movement_hitbox[UP], 6, RED);
+                        DrawRectangleLinesEx(player.movement_hitbox[DOWN], 6, BLUE);
+                        DrawRectangleLinesEx(player.movement_hitbox[LEFT], 6, YELLOW);
+                        DrawRectangleLinesEx(player.movement_hitbox[RIGHT], 6, BLACK);
+                    }
 
                 EndMode2D();
             EndDrawing();
@@ -132,7 +134,7 @@ void Initialize()
     player.animation = (struct Animation){
         texture_ptr[STAND],
         {0, 120, textureWidth, textureHeight},
-        0, 8, 8
+        0, 8, 0
     };
 
     player.coords = (Rectangle){
@@ -181,6 +183,7 @@ void DrawObstacles(Texture2D *Blocks)
         if (obstacles[i].type != BORDER)
             DrawTextureRec(*Blocks, (Rectangle){SourceVec.x, SourceVec.y, obstacles[i].coords.width, obstacles[i].coords.height},
                            (Vector2){obstacles[i].coords.x, obstacles[i].coords.y}, WHITE);
+        if(ShowHitbox) DrawRectangleLinesEx(obstacles[i].coords, 8, RED);
     }
 }
 
@@ -264,7 +267,7 @@ void PlayerAnimation()
 
 bool PlayerAttack()
 {
-    if(IsKeyPressed(KEY_J))
+    if(IsKeyDown(KEY_J))
     {
         enum Direction dir = player.animation.sourceTexture.y / player.animation.sourceTexture.height;
         int textureWidth = texture_ptr[TEMP]->width / 4;
