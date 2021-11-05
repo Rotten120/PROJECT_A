@@ -14,7 +14,8 @@ int next_response_player;
 int framesCounter_global;
 
 struct PlayerData player;
-Texture2D *texture_ptr[4];
+struct SpecialEffectsData effects[] = { 0 };
+Texture2D *texture_ptr[5];
 
 struct Obstacles obstacles[] = {
     //TYPE OF BLOCK, {x position, y position, width, height}
@@ -38,6 +39,7 @@ bool PlayerMovement();
 
 void DrawObstacles(Texture2D *);
 bool IsCollideEntityRecs(Rectangle *, struct Obstacles[]);
+bool IsHitEntityRecs(Rectangle *, struct EntitiesData[]);
 
 int main()
 {
@@ -45,14 +47,16 @@ int main()
     SetTargetFPS(SETFPS);
 
     /* TEXTURE AND SOUND LOAD SECTION OF THE CODE */
+    Texture2D temp = LoadTexture("assets/happy face.jpg");
     Texture2D Area = LoadTexture("assets/TRUE BG.png");
     Texture2D Player_Standing = LoadTexture("assets/PLAYER_STANDING.png");
     Texture2D Player_Walking = LoadTexture("assets/PLAYER_WALKING.png");
     Texture2D Blocks = LoadTexture("assets/OBSTACLES_TRUE.png");
 
-    texture_ptr[STANDING] = &Player_Standing;
-    texture_ptr[WALKING] = &Player_Walking;
-    texture_ptr[OBSTACLES] = &Blocks;
+    texture_ptr[TEMP] = &temp;
+    texture_ptr[STAND] = &Player_Standing;
+    texture_ptr[WALK] = &Player_Walking;
+    texture_ptr[OBSTACLE] = &Blocks;
     texture_ptr[MAP] = &Area;
     /* TEXTURE AND SOUND LOAD SECTION OF THE CODE */
 
@@ -78,11 +82,15 @@ int main()
         BaseHitBox_Height = player.coords.height / 3;
         BaseHitbox_Ypos = BaseHitBox_Height * 2;
 
-        player.movement_hitbox[0] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-        player.movement_hitbox[1] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-        player.movement_hitbox[2] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-        player.movement_hitbox[3] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+        player.movement_hitbox[UP] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+        player.movement_hitbox[DOWN] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+        player.movement_hitbox[LEFT] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+        player.movement_hitbox[RIGHT] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
 
+        if(framesCounter_global == SETFPS)
+        {
+
+        }
             BeginDrawing();
                 ClearBackground(RAYWHITE);
                 BeginMode2D(camera);
@@ -93,8 +101,10 @@ int main()
     
                 EndMode2D();
             EndDrawing();
+        framesCounter_global++;
     }
 
+    UnloadTexture(temp);
     UnloadTexture(Area);
     UnloadTexture(Blocks);
     UnloadTexture(Player_Standing);
@@ -111,13 +121,13 @@ void Initialize()
 
     double BaseHitBox_Height = player.coords.height / 3;
     double BaseHitbox_Ypos = BaseHitBox_Height * 2;
-
-    player.nextPlayerInput = 8;
+    
     player.action = NONE;
 
     player.animation.sourceTexture = (Rectangle){0, 120, player.coords.width, player.coords.height};
-    player.animation.texture = texture_ptr[STANDING];
+    player.animation.texture = texture_ptr[STAND];
     player.animation.currentFrame = 0;
+    player.animation.sizeFrame = 8;
     player.animation.nextFrame = 8;
 
     player.stats.damage = 15;
@@ -175,7 +185,7 @@ void PlayerControls()
         PlayerAnimation();
     }
 
-    if(next_response_player >= player.nextPlayerInput)
+    if(next_response_player >= player.animation.sizeFrame)
     {
         if(PlayerAttack())
         {
@@ -185,10 +195,10 @@ void PlayerControls()
         {
             next_response_player = 0;
             framesCounter_player++;
-                player.nextPlayerInput = 0;
+                player.animation.sizeFrame = 0;
                 player.action = WALKING;
             player.animation = (struct Animation){
-                texture_ptr[WALKING],
+                texture_ptr[WALK],
                 player.animation.sourceTexture,
                 player.animation.currentFrame,
                 8
@@ -198,10 +208,10 @@ void PlayerControls()
         {
             next_response_player = 0;
             framesCounter_player++;
-                player.nextPlayerInput = 0;
+                player.animation.sizeFrame = 0;
                 player.action = NONE;
             player.animation = (struct Animation){
-                texture_ptr[STANDING],
+                texture_ptr[STAND],
                 player.animation.sourceTexture,
                 0,
                 8
@@ -240,24 +250,45 @@ bool PlayerAttack()
     if(IsKeyPressed(KEY_J))
     {
         enum Direction dir = player.animation.sourceTexture.y / player.animation.sourceTexture.height;
+        int textureWidth = texture_ptr[TEMP]->width / 4;
+        int textureHeight = texture_ptr[TEMP]->height / 4;
+
+        struct SpecialEffectsData sword = {
+            SLASH,
+            {player.coords.x, player.coords.y, textureWidth, textureHeight},
+            {
+                texture_ptr[TEMP],
+                {0, 0, textureWidth, textureHeight},
+                0, 10, 40
+            }
+        };
 
         switch(dir)
         {
             case UP:
-                
+                sword.animation.sourceTexture.y = sword.coords.height * UP;
+                sword.coords.y -= textureHeight;
             break;
 
             case DOWN:
+                sword.animation.sourceTexture.y = sword.coords.height * DOWN;
+                sword.coords.y += textureHeight;
             break;
 
             case LEFT:
+                sword.animation.sourceTexture.y = sword.coords.height * LEFT;
+                sword.coords.x -= textureWidth;
             break;
 
             case RIGHT:
+                sword.animation.sourceTexture.y = sword.coords.height * RIGHT;
+                sword.coords.x += textureWidth;
             break;
 
             default: break;
         }
+
+        return true;
     }
     return false;
 }
@@ -300,3 +331,10 @@ bool IsCollideEntityRecs(Rectangle *Target_Entity, struct Obstacles Target_Hitbo
     return false;
 }
 
+bool IsHitEntityRecs(Rectangle *Target_Entity, struct EntitiesData Target_Hitbox[])
+{
+    for (int i = 0; i < MAX; i++)
+        if(CheckCollisionRecs(*Target_Entity, Target_Hitbox[i].coords))
+            return true;
+    return false;
+}

@@ -3,9 +3,10 @@
 //enumarates the textures in the pointer
 typedef enum Texture_PTR
 {
-    STANDING,
-    WALKING,
-    OBSTACLES,
+    TEMP,
+    STAND,
+    WALK,
+    OBSTACLE,
     MAP
 };
 
@@ -72,6 +73,7 @@ typedef struct Animation
 
     int currentFrame;           //what currently texture is use
     int nextFrame;              //how many frames before it loads the next texture
+    int sizeFrame;              //how many frames before the animation stops
 };
 
 //defines the player's parameters
@@ -82,7 +84,6 @@ typedef struct PlayerData
 
     struct Animation animation;
     enum Action action;
-    int nextPlayerInput;
 
     struct Stats stats;
 };
