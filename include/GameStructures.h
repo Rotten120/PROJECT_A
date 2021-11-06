@@ -4,6 +4,7 @@
 typedef enum Texture_PTR
 {
     TEMP,
+    SLICE,
     STAND,
     WALK,
     OBSTACLE,
@@ -74,6 +75,9 @@ typedef struct Animation
     int currentFrame;           //what currently texture is use
     int nextFrame;              //how many frames before it loads the next texture
     int sizeFrame;              //how many frames before the animation stops
+
+    int nextTimer;
+    int sizeTimer;
 };
 
 //defines the player's parameters
