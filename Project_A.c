@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "GameStructures.h"
+//https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/243/18/
 
 #define SETFPS 60
 #define MAX 8
@@ -31,13 +32,14 @@ struct Obstacles obstacles[] = {
 void Initialize();
 
 void DoAnimation(struct Animation*);
+void AddEntity();
+Vector2 TextureSize(Texture2D*);
 
 void PlayerControls();
 bool PlayerAttack();
 bool PlayerMovement();
 
 void DrawObstacles();
-Vector2 TextureSize(Texture2D*);
 bool IsCollideEntityRecs(Rectangle, struct Obstacles[]);
 
 void UnloadData();
@@ -95,14 +97,6 @@ int main()
                     DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
 
                 EndMode2D();
-                    DrawText(TextFormat("%d", player.coords.height), 50, 50, 45, BLUE);
-                    DrawText(TextFormat("%d", player.action_type), 50, 100, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.sizeFrame), 50, 150, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.currentFrame), 50, 200, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.nextFrame), 50, 250, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.nextFrame_counter), 50, 300, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.sizeFrame_counter), 50, 350, 45, BLUE);
-                    DrawText(TextFormat("%d", player.animation.sourceTexture.y), 50, 400, 45, BLUE);
             EndDrawing();
     }
 
@@ -185,7 +179,7 @@ void DoAnimation(struct Animation* animation)
             animation->nextFrame_counter = 0;
 
             animation->currentFrame++;
-            if(animation->currentFrame >= (animation->texture->width / animation->sourceTexture.width))
+            if(animation->currentFrame > (animation->texture->width / animation->sourceTexture.width) - 1)
                 animation->currentFrame = 0;
 
             animation->sourceTexture.x = animation->sourceTexture.width * animation->currentFrame;
@@ -196,6 +190,16 @@ void DoAnimation(struct Animation* animation)
         animation->sizeFrame_counter++;
         animation->nextFrame_counter++;
     }
+}
+
+Vector2 TextureSize(Texture2D* texture)
+{
+    if(texture == texture_ptr[TEXTURE_SLASH] ||
+       texture == texture_ptr[TEXTURE_STAND] ||
+       texture == texture_ptr[TEXTURE_WALK]    )
+    return (Vector2){96, 120};
+
+    return (Vector2){0, 0};
 }
 
 /**********************************/
@@ -212,6 +216,7 @@ void PlayerControls()
         }
         else if(PlayerMovement())
         {
+            player.action_type = ACTION_WALKING;
             player.animation = (struct Animation){
                 texture_ptr[TEXTURE_WALK],
                 player.animation.sourceTexture,
@@ -221,8 +226,10 @@ void PlayerControls()
         }
         else
         {
+            player.action_type = ACTION_NONE;
+            player.animation.sourceTexture.x = 0;
             player.animation = (struct Animation){
-                texture_ptr[TEXTURE_WALK],
+                texture_ptr[TEXTURE_STAND],
                 player.animation.sourceTexture,
                 0, 8, 0, 0, 0
             };
@@ -271,16 +278,6 @@ bool PlayerMovement()
 }
 
 /**********************************/
-
-Vector2 TextureSize(Texture2D* texture)
-{
-    if(texture == texture_ptr[TEXTURE_SLASH] ||
-       texture == texture_ptr[TEXTURE_STAND] ||
-       texture == texture_ptr[TEXTURE_WALK]    )
-    return (Vector2){96, 120};
-
-    return (Vector2){0, 0};
-}
 
 bool IsCollideEntityRecs(Rectangle Target_Entity, struct Obstacles Target_Hitbox[])
 {
