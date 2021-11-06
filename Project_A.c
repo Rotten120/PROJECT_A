@@ -66,10 +66,11 @@ int main()
 
     Initialize();
 
-    Camera2D camera = {
-        {player.coords.x + (player.coords.width / 2), player.coords.y + (player.coords.height / 2)},
-        {screenWidth / 2, screenHeight / 2}, 0.0f, 0.8f
-    };
+    Camera2D camera;
+    camera.target = (Vector2){player.coords.x + (player.coords.width / 2), player.coords.y + (player.coords.height / 2)};
+    camera.offset = (Vector2){screenWidth / 2, screenHeight / 2};
+    camera.rotation = 0.0f;
+    camera.zoom = 0.8f;
 
     while (!WindowShouldClose())
     {
@@ -93,12 +94,15 @@ int main()
                     DrawObstacles();
                     DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
 
-                    DrawRectangleLinesEx(player.movement_hitbox[0], 4, RED);
-                    DrawRectangleLinesEx(player.movement_hitbox[1], 4, BLUE);
-                    DrawRectangleLinesEx(player.movement_hitbox[2], 4, YELLOW);
-                    DrawRectangleLinesEx(player.movement_hitbox[3], 4, WHITE);
-
                 EndMode2D();
+                    DrawText(TextFormat("%d", player.coords.height), 50, 50, 45, BLUE);
+                    DrawText(TextFormat("%d", player.action_type), 50, 100, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.sizeFrame), 50, 150, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.currentFrame), 50, 200, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.nextFrame), 50, 250, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.nextFrame_counter), 50, 300, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.sizeFrame_counter), 50, 350, 45, BLUE);
+                    DrawText(TextFormat("%d", player.animation.sourceTexture.y), 50, 400, 45, BLUE);
             EndDrawing();
     }
 
@@ -181,7 +185,7 @@ void DoAnimation(struct Animation* animation)
             animation->nextFrame_counter = 0;
 
             animation->currentFrame++;
-            if(animation->currentFrame >= (animation->texture->width / animation->sourceTexture.width) - 1)
+            if(animation->currentFrame >= (animation->texture->width / animation->sourceTexture.width))
                 animation->currentFrame = 0;
 
             animation->sourceTexture.x = animation->sourceTexture.width * animation->currentFrame;
@@ -200,7 +204,7 @@ void PlayerControls()
 {
     DoAnimation(&player.animation);
 
-    if(player.animation.sizeFrame_counter - 1 >= player.animation.sizeFrame)
+    if(player.animation.sizeFrame_counter >= player.animation.sizeFrame)
     {
         if(PlayerAttack())
         {
@@ -262,7 +266,7 @@ bool PlayerMovement()
 
     if(IsKeyDown(KEY_A) || IsKeyDown(KEY_S) || IsKeyDown(KEY_W) || IsKeyDown(KEY_D))
         return true;
-    
+
     return false;
 }
 
@@ -291,3 +295,4 @@ void UnloadData()
     for(int i = 0; i < TEXTURE_MAP; i++)
         UnloadTexture(*texture_ptr[i]);
 }
+
