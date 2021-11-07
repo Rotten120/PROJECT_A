@@ -13,7 +13,11 @@ int framesCounter_global;
 
 struct PlayerData player;
 struct SpecialEffectsData effects[] = { 0 };
+struct EntitiesData entities[] = { 0 };
 Texture2D *texture_ptr[6];
+
+int effectsMax = 1;
+int entitiesMax = 1;
 
 struct Obstacles obstacles[] = {
     //TYPE OF BLOCK, {x position, y position, width, height}
@@ -30,18 +34,31 @@ struct Obstacles obstacles[] = {
 };
 
 void Initialize();
+void Update();
 
 void DoAnimation(struct Animation*);
-void AddEntity();
 Vector2 TextureSize(Texture2D*);
+
+void AnimateEffect();
+void AddEffect(struct SpecialEffectsData*);
+void RemoveEffect(struct SpecialEffectsData*);
+
+void AnimateEntity();
+void AddEntity(struct EntitiesData*);
+void RemoveEntity(struct EntitiesData*);
 
 void PlayerControls();
 bool PlayerAttack();
 bool PlayerMovement();
 
-void DrawObstacles();
-bool IsCollideEntityRecs(Rectangle, struct Obstacles[]);
+void WhenHit();
 
+void DrawGameScreen();
+void DrawObstacles();
+void DrawEffect();
+void DrawEntity();
+
+bool IsCollideEntityRecs(Rectangle, struct Obstacles[]);
 void UnloadData();
 
 int main()
@@ -77,26 +94,20 @@ int main()
     while (!WindowShouldClose())
     {
         PlayerControls();
+        AnimateEffect();
 
         camera.target = (Vector2){player.coords.x + (player.coords.width / 2), player.coords.y + (player.coords.height / 2)};
 
-        BaseHitBox_Height = player.coords.height / 3;
-        BaseHitbox_Ypos = BaseHitBox_Height * 2;
-
-        player.movement_hitbox[DIR_UP] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-        player.movement_hitbox[DIR_DOWN] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-        player.movement_hitbox[DIR_LEFT] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
-        player.movement_hitbox[DIR_RIGHT] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+        Update();
 
             BeginDrawing();
                 ClearBackground(RAYWHITE);
                 BeginMode2D(camera);
 
-                    DrawTexture(Area, -1600, -1600, WHITE);
-                    DrawObstacles();
-                    DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
+                    DrawGameScreen();
 
                 EndMode2D();
+                DrawText(TextFormat("%d", effectsMax), 50, 50, 50, BLUE);
             EndDrawing();
     }
 
@@ -104,6 +115,8 @@ int main()
     CloseWindow();
     return 0;
 }
+
+/**********************************/
 
 void Initialize()
 {
@@ -140,40 +153,26 @@ void Initialize()
     player.movement_hitbox[DIR_RIGHT] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
 }
 
-void DrawObstacles()
+void Update()
 {
-    Vector2 SourceVec;
+    BaseHitBox_Height = player.coords.height / 3;
+    BaseHitbox_Ypos = BaseHitBox_Height * 2;
 
-    for (int i = 0; i < MAX; i++)
-    {
-        switch (obstacles[i].type)
-        {
-            case BLOCK_CRATE: SourceVec = (Vector2){0, 0}; break;
-            case BLOCK_STONE: SourceVec = (Vector2){120, 0}; break;
-            case BLOCK_HAY: SourceVec = (Vector2){240, 0}; break;
-            case BLOCK_POND: SourceVec = (Vector2){360, 0}; break;
-            case BLOCK_BORDER: break;
-            default: break;
-        }
-
-        if (obstacles[i].type != BLOCK_BORDER)
-        {
-            DrawTextureRec(
-                *texture_ptr[TEXTURE_OBSTACLE],
-                (Rectangle){SourceVec.x, SourceVec.y, obstacles[i].coords.width, obstacles[i].coords.height},
-                (Vector2){obstacles[i].coords.x, obstacles[i].coords.y},
-                WHITE
-            );
-        }
-    }
+    player.movement_hitbox[DIR_UP] = (Rectangle){player.coords.x, player.coords.y - player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[DIR_DOWN] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[DIR_LEFT] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+    player.movement_hitbox[DIR_RIGHT] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
 }
 
 /**********************************/
 
 void DoAnimation(struct Animation* animation)
 {
-    if(animation->sizeFrame_counter >= animation->sizeFrame)
+    if(animation->sizeFrame_counter < animation->sizeFrame)
     {
+        animation->sizeFrame_counter++;
+        animation->nextFrame_counter++;
+
         if(animation->nextFrame_counter >= animation->nextFrame)
         {
             animation->nextFrame_counter = 0;
@@ -184,12 +183,7 @@ void DoAnimation(struct Animation* animation)
 
             animation->sourceTexture.x = animation->sourceTexture.width * animation->currentFrame;
         }
-    }
-    else
-    {
-        animation->sizeFrame_counter++;
-        animation->nextFrame_counter++;
-    }
+    }   
 }
 
 Vector2 TextureSize(Texture2D* texture)
@@ -204,6 +198,70 @@ Vector2 TextureSize(Texture2D* texture)
 
 /**********************************/
 
+void AnimateEffect()
+{
+    for(int i = 1; i < effectsMax; i++)
+    {
+        DoAnimation(&effects[i].animation);
+        if(effects[i].animation.sizeFrame_counter >= effects[i].animation.sizeFrame)
+            RemoveEffect(&effects[i]);
+    }
+}
+
+void AddEffect(struct SpecialEffectsData* insert_effect)
+{
+    effects[effectsMax] = *insert_effect;
+    effectsMax++;
+}
+
+void RemoveEffect(struct SpecialEffectsData* remove_effect)
+{
+    for(int i = 1; i < effectsMax; i++)
+    {
+        if(remove_effect == &effects[i])
+        {
+            for(int n = i; n < effectsMax - 1; n++)
+                effects[n] = effects[n + 1];
+            effectsMax--;
+            break;
+        }
+    }
+}
+
+/**********************************/
+
+void AnimateEntity()
+{
+    for(int i = 1; i < entitiesMax; i++)
+    {
+        DoAnimation(&entities[i].animation);
+        if(entities[i].animation.sizeFrame_counter >= entities[i].animation.sizeFrame)
+            RemoveEffect(&effects[i]);
+    }
+}
+
+void AddEntity(struct EntitiesData* insert_entity)
+{
+    entities[entitiesMax] = *insert_entity;
+    entitiesMax++;
+}
+
+void RemoveEntity(struct EntitiesData* remove_entity)
+{
+    for(int i = 1; i < entitiesMax; i++)
+    {
+        if(remove_entity == &entities[i])
+        {
+            for(int n = i; n < effectsMax - 1; n++)
+                entities[n] = entities[n + 1];
+            entitiesMax--;
+            break;
+        }
+    }
+}
+
+/**********************************/
+
 void PlayerControls()
 {
     DoAnimation(&player.animation);
@@ -212,7 +270,12 @@ void PlayerControls()
     {
         if(PlayerAttack())
         {
-            
+            player.action_type = ACTION_ATTACKING;
+            player.animation = (struct Animation){
+                texture_ptr[TEXTURE_STAND],
+                player.animation.sourceTexture,
+                0, 5, 30, 0, 0
+            };
         }
         else if(PlayerMovement())
         {
@@ -221,7 +284,7 @@ void PlayerControls()
                 texture_ptr[TEXTURE_WALK],
                 player.animation.sourceTexture,
                 player.animation.currentFrame,
-                8, 0, player.animation.nextFrame_counter + 1, 0
+                8, 1, player.animation.nextFrame_counter, 0
             };
         }
         else
@@ -241,7 +304,45 @@ bool PlayerAttack()
 {
     if(IsKeyDown(KEY_J))
     {
+        Vector2 spriteSize = TextureSize(texture_ptr[TEXTURE_SLASH]);
 
+        struct SpecialEffectsData slash = {
+            {
+                texture_ptr[TEXTURE_SLASH],
+                {0, 0, spriteSize.x, spriteSize.y},
+                0, 5, 30, 0, 0
+            },
+            EFFECTS_SLASH,
+            {0, 0, spriteSize.x, spriteSize.y}
+        };
+
+        enum Direction dir = player.animation.sourceTexture.y / player.animation.sourceTexture.height;
+        slash.animation.sourceTexture.y = slash.animation.sourceTexture.height * dir;
+
+        switch(dir)
+        {
+            case DIR_UP:
+                slash.coords.x = player.coords.x;
+                slash.coords.y = player.coords.y - slash.coords.height;
+            break;
+
+            case DIR_DOWN:
+                slash.coords.x = player.coords.x;
+                slash.coords.y = player.coords.y + player.coords.height;
+            break;
+
+            case DIR_LEFT:
+                slash.coords.x = player.coords.x - slash.coords.width;
+                slash.coords.y = player.coords.y;
+            break;
+
+            case DIR_RIGHT:
+                slash.coords.x = player.coords.x + player.coords.width;
+                slash.coords.y = player.coords.y;
+            break;
+        }
+
+        AddEffect(&slash);
         return true;
     }
     return false;
@@ -275,6 +376,65 @@ bool PlayerMovement()
         return true;
 
     return false;
+}
+
+/**********************************/
+
+void WhenHit()
+{
+    
+}
+
+/**********************************/
+
+void DrawGameScreen()
+{
+    DrawTexture(*texture_ptr[TEXTURE_MAP], -1600, -1600, WHITE);
+    DrawObstacles();
+    DrawEffect();
+    DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
+}
+
+void DrawObstacles()
+{
+    Vector2 SourceVec;
+
+    for (int i = 0; i < MAX; i++)
+    {
+        switch (obstacles[i].type)
+        {
+            case BLOCK_CRATE: SourceVec = (Vector2){0, 0}; break;
+            case BLOCK_STONE: SourceVec = (Vector2){120, 0}; break;
+            case BLOCK_HAY: SourceVec = (Vector2){240, 0}; break;
+            case BLOCK_POND: SourceVec = (Vector2){360, 0}; break;
+            case BLOCK_BORDER: break;
+            default: break;
+        }
+
+        if (obstacles[i].type != BLOCK_BORDER)
+        {
+            DrawTextureRec(
+                *texture_ptr[TEXTURE_OBSTACLE],
+                (Rectangle){SourceVec.x, SourceVec.y, obstacles[i].coords.width, obstacles[i].coords.height},
+                (Vector2){obstacles[i].coords.x, obstacles[i].coords.y},
+                WHITE
+            );
+        }
+    }
+}
+
+void DrawEffect()
+{
+    for(int i = 1; i < effectsMax; i++)
+        DrawTextureRec(*effects[i].animation.texture, effects[i].animation.sourceTexture, 
+                      (Vector2){effects[i].coords.x, effects[i].coords.y}, WHITE);
+}
+
+void DrawEntity()
+{
+    for(int i = 1; i < entitiesMax; i++)
+        DrawTextureRec(*entities[i].animation.texture, entities[i].animation.sourceTexture, 
+                      (Vector2){entities[i].coords.x, entities[i].coords.y}, WHITE);
 }
 
 /**********************************/
