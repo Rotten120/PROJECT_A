@@ -452,4 +452,3 @@ void UnloadData()
     for(int i = 0; i < TEXTURE_MAP; i++)
         UnloadTexture(*texture_ptr[i]);
 }
-
