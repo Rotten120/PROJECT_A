@@ -11,7 +11,7 @@ const int screenHeight = 800;
 double BaseHitBox_Height, BaseHitbox_Ypos;
 int framesCounter_global;
 
-struct PlayerData player;
+struct EntitiesData player;
 struct SpecialEffectsData effects[] = { 0 };
 struct EntitiesData entities[] = { 0 };
 Texture2D *texture_ptr[6];
@@ -35,6 +35,7 @@ struct Obstacles obstacles[] = {
 
 void Initialize();
 void Update();
+void System();
 
 void DoAnimation(struct Animation*);
 Vector2 TextureSize(Texture2D*);
@@ -49,11 +50,13 @@ void RemoveEntity(struct EntitiesData*);
 
 void PlayerControls();
 bool PlayerAttack();
+bool PlayerSkill_A();
 bool PlayerMovement();
 
-void WhenHit();
+void WhenHit(struct EntitiesData*, struct EntitiesData*);
 
 void DrawGameScreen();
+void DrawGameStatic();
 void DrawObstacles();
 void DrawEffect();
 void DrawEntity();
@@ -69,6 +72,7 @@ int main()
     /* TEXTURE AND SOUND LOAD SECTION OF THE CODE */
     Texture2D
     temp = LoadTexture("assets/happy face.jpg"),
+    Gui = LoadTexture("assets/GUI.png"),
     Slash = LoadTexture("assets/SLASH.png"),
     Player_Standing = LoadTexture("assets/PLAYER_STANDING.png"),
     Player_Walking = LoadTexture("assets/PLAYER_WALKING.png"),
@@ -76,6 +80,7 @@ int main()
     Area = LoadTexture("assets/TRUE BG.png");
 
     texture_ptr[TEXTURE_TEMP] = &temp;
+    texture_ptr[TEXTURE_GUI] = &Gui; 
     texture_ptr[TEXTURE_SLASH] = &Slash;
     texture_ptr[TEXTURE_STAND] = &Player_Standing;
     texture_ptr[TEXTURE_WALK] = &Player_Walking;
@@ -107,7 +112,8 @@ int main()
                     DrawGameScreen();
 
                 EndMode2D();
-                DrawText(TextFormat("%d", effectsMax), 50, 50, 50, BLUE);
+                    DrawGameStatic();
+                    System();
             EndDrawing();
     }
 
@@ -124,6 +130,7 @@ void Initialize()
     int textureHeight = TextureSize(texture_ptr[TEXTURE_STAND]).y;
 
     player.action_type = ACTION_NONE;
+    player.type = PLAYER;
 
     player.animation = (struct Animation){
         texture_ptr[TEXTURE_STAND],
@@ -162,6 +169,30 @@ void Update()
     player.movement_hitbox[DIR_DOWN] = (Rectangle){player.coords.x, player.coords.y + player.stats.speed + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
     player.movement_hitbox[DIR_LEFT] = (Rectangle){player.coords.x - player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
     player.movement_hitbox[DIR_RIGHT] = (Rectangle){player.coords.x + player.stats.speed, player.coords.y + BaseHitbox_Ypos, player.coords.width, BaseHitBox_Height};
+}
+
+void System()
+{
+    static bool isSystemActivated = false;
+
+    if(IsKeyPressed(KEY_F3))
+        isSystemActivated = !isSystemActivated;
+    if(isSystemActivated)
+    {
+        DrawRectangle(10, 10, 180, 250, (Color){102, 191, 255, 70});
+        DrawText("DEBUG CONSOLE", 15, 15, 17, WHITE);
+        DrawText(TextFormat("%d", framesCounter_global), 15, 35, 17, WHITE);
+        DrawText("0", 15, 55, 17, WHITE);
+        DrawText("0", 15, 75, 17, WHITE);
+        DrawText("0", 15, 95, 17, WHITE);
+        DrawText("0", 15, 115, 17, WHITE);
+        DrawText("0", 15, 135, 17, WHITE);
+        DrawText("0", 15, 155, 17, WHITE);
+        DrawText("0", 15, 175, 17, WHITE);
+        DrawText("0", 15, 195, 17, WHITE);
+        DrawText("0", 15, 215, 17, WHITE);
+        DrawText("0", 15, 235, 17, WHITE);
+    }
 }
 
 /**********************************/
@@ -277,6 +308,10 @@ void PlayerControls()
                 0, 5, 30, 0, 0
             };
         }
+        else if(PlayerSkill_A())
+        {
+
+        }
         else if(PlayerMovement())
         {
             player.action_type = ACTION_WALKING;
@@ -342,9 +377,18 @@ bool PlayerAttack()
             break;
         }
 
+        for(int i = 1; i < entitiesMax; i++)
+            if(CheckCollisionRecs(slash.coords, entities[i].coords))
+                WhenHit(&player, &entities[i]);
+
         AddEffect(&slash);
         return true;
     }
+    return false;
+}
+
+bool PlayerSkill_A()
+{
     return false;
 }
 
@@ -380,9 +424,9 @@ bool PlayerMovement()
 
 /**********************************/
 
-void WhenHit()
+void WhenHit(struct EntitiesData* Target_Entity, struct EntitiesData* Source_Entity)
 {
-    
+    Target_Entity->stats.health.current = Source_Entity->stats.damage;
 }
 
 /**********************************/
@@ -393,6 +437,11 @@ void DrawGameScreen()
     DrawObstacles();
     DrawEffect();
     DrawTextureRec(*player.animation.texture, player.animation.sourceTexture, (Vector2){player.coords.x, player.coords.y}, WHITE);
+}
+
+void DrawGameStatic()
+{
+    DrawTexture(*texture_ptr[TEXTURE_GUI], 0, 600, WHITE);
 }
 
 void DrawObstacles()
